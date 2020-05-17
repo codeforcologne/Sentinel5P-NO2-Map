@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<!--
+   https://www.codefor.de/koeln/
+   contact@opendemdata.info 
+   based on Openlayers: https://openlayers.org/
+   License: BSD 2-Clause License
+   https://tldrlegal.com/license/bsd-2-clause-license-(freebsd)
+   -->
+<html lang="de">
+   <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="description" content="Interaktive Karte zur Darstellung der Sentinel-5P Daten für den Sickstoffdioxid (NO2) Gehalt der Troposphäre">
+      <meta name="keywords" content="Stickstoffoxide, Stickstoffdioxid, Sentinel, Open Data, NO2, OpenLayers">
+      <meta name="author" content="contact@opendemdata.info">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>S5P-NO2-Map</title>
+      <style>
+         html,
+         body {
+         height: 100%;
+         overflow: hidden
+         }
+         .ol-viewport {
+         overflow: unset!important;
+         }
+         .loader{
+         position: absolute;
+         bottom: 50px;
+         right: 50px;
+         display: none;
+         }
+         .map {
+         width: 100%;
+         height: calc(100% - 65px);
+         }
+         .timeslider {
+         position: absolute;
+         left: 100px;
+         background-color: lightblue!important;
+         }
+         .head {
+         height: 55px;
+         color: white;
+         }
+         body {
+         background-color: black;
+         }
+         .ol-zoom {
+         top: 350px!important;
+         }
+         .noiseselect {
+         .position: absolute;
+         top: 10px;
+         width: 250px;
+         height: 200px;
+         left: 10px;
+         background-color: lightblue!important;
+         }
+         .objSpanNode {
+         left: 10px;
+         position: absolute;
+         top: 180px;
+         }
+         .objSpanNode2 {
+         left: 210px;
+         position: absolute;
+         top: 180px;
+         }
+         #schwellenwert::before {
+         content: '';
+         display: inline-block;
+         width: 15px;
+         height: 15px;
+         -moz-border-radius: 7.5px;
+         -webkit-border-radius: 7.5px;
+         border-radius: 7.5px;
+         background-color: #00FF00;
+         }
+         #schwellenwert::after {
+         content: '';
+         display: inline-block;
+         width: 15px;
+         height: 15px;
+         -moz-border-radius: 7.5px;
+         -webkit-border-radius: 7.5px;
+         border-radius: 7.5px;
+         background-color: #FF0000;
+         }
+         .switchDiv {
+         background: url("images/show.svg");
+         }
+         .switchDivHide {
+         background: url("images/hide.svg");
+         }
+         .help_pdf{
+         float: right;
+         margin: 20px;
+         }
+         .ol-popup {
+         position: absolute;
+         background-color: white;
+         -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+         filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+         padding: 15px;
+         border-radius: 10px;
+         border: 1px solid #cccccc;
+         bottom: 12px;
+         left: -50px;
+         min-width: 280px;
+         z-index: 99999;
+         }
+         .ol-popup:after,
+         .ol-popup:before {
+         top: 100%;
+         border: solid transparent;
+         content: " ";
+         height: 0;
+         width: 0;
+         position: absolute;
+         pointer-events: none;
+         }
+         .ol-popup:after {
+         border-top-color: white;
+         border-width: 10px;
+         left: 48px;
+         margin-left: -10px;
+         }
+         .ol-popup:before {
+         border-top-color: #cccccc;
+         border-width: 11px;
+         left: 48px;
+         margin-left: -11px;
+         }
+         .ol-popup-closer {
+         text-decoration: none;
+         position: absolute;
+         top: 2px;
+         right: 8px;
+         }
+         .ol-popup-closer:after {
+         content: "✖";
+         }
+         table,
+         th,
+         td {
+         border: 1px solid white;
+         border-collapse: collapse;
+         }
+         .popupMain {
+         height: 100px;
+         overflow-y: scroll;
+         }
+         .languageIcon {
+         position: relative;
+         }
+         .title {
+         float: left;
+         top: -20px;
+         position: relative;
+         }
+         .head {
+         color: white;
+         }
+         .modal3.open {
+         display: grid;
+         grid-template-rows: 100px auto 100px;
+         }
+         .modal3_content {
+         overflow-y: auto;
+         }
+         .bigradio {
+         min-height: 20px;
+         min-width: 20px;
+         }
+         .modal_header {
+         height: 40px;
+         }
+         .modal_header_fi {
+         height: 0px;
+         }
+         .modal_footer {
+         position: absolute;
+         bottom: 70px;
+         right: 100px;
+         }
+         .closeInfo {
+         right: 50px;
+         top: 15px;
+         position: absolute;
+         }
+         .modal_content {
+         margin-right: 30px;
+         overflow: auto;
+         height: calc(100% - 140px);
+         }
+         /* Extra small devices (phones, 600px and down) */
+         @media only screen and (max-width: 600px) {
+         .modal3 {
+         padding: 20px;
+         display: none;
+         height: 100%;
+         left: 0;
+         position: fixed;
+         top: 0;
+         width: 100%;
+         background-color: black;
+         color: white;
+         z-index: 9999;
+         }
+         }
+         /* Small devices (portrait tablets and large phones, 600px and up) */
+         @media only screen and (min-width: 600px) {
+         .modal3 {
+         padding: 20px;
+         display: none;
+         position: fixed;
+         top: 100px;
+         left: 50px;
+         right: 50px;
+         bottom: 150px;
+         background-color: black;
+         color: white;
+         z-index: 9999;
+         }
+         }
+         a:link {
+         color: blue;
+         }
+         a:visited {
+         color: blue;
+         }
+         a:hover {
+         color: lightblue;
+         }
+         a:active {
+         color: blue;
+         }
+         a.blackdiv:link {
+         color: lightblue;
+         }
+         a.blackdiv:visited {
+         color: lightblue;
+         }
+         a.blackdiv:hover {
+         color: lightcyan;
+         }
+      </style>
+   </head>
+   <div id="head" class="head">
+      <h1 id="titleApp" class="title"> &nbsp; Sentinel-5P NO<sub>2</sub> Map&nbsp; &nbsp; 
+      </h1>
+      <img class="languageIcon" id="helpIcon" src="images/help.png" title="Über, Hilfe und Daten" alt="Über, Hilfe und Daten" height="45" width="45">
+      <img class="languageIcon" id="legalIcon" src="images/legal.png" title="Rechtliches" alt="Rechtliches" height="45" width="45">
+   </div>
+   <body>
+      <div id="map" class="map"></div>
+      <div id="popup" class="ol-popup">
+         <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+         <div id="popup-content"></div>
+      </div>
+      <div id="help" class="modal3">
+         <div id="helpHeader" class="modal_header">
+            <div id="helpText" class="modal_headerText">Über, Hilfe, Hintergrundinformationen und Daten</div>
+            <img id="closeHelp" class="closeInfo" src="images/close.svg" alt="close" width="30" height="30">
+         </div>
+         <div id="selectHelp" class="modal_content">
+            <a class="blackdiv" target="_blank" href="hilfe.pdf">
+            <img class="help_pdf" src="images/PDF_icon.svg" alt="PDF" width="40" height="60">
+            </a>
+            <h4>Interaktive Karte zur Darstellung der 
+               <a class="blackdiv" href="https://sentinel.esa.int/web/sentinel/missions/sentinel-5p">Sentinel-5P</a> Daten für den Sickstoffdioxid Gehalt der 
+               <a class="blackdiv" target="_blank" href="https://de.wikipedia.org/wiki/Troposph%C3%A4re">Troposphäre</a>.
+            </h4>
+            <p>
+               <strong> Im folgendem wird versucht das komplexe Thema auf einfache Weise zu veranschaulichen.</strong>
+            </p>
+            <h2>Über  CodeforCologne  [OK-Lab Köln]</h2>
+            <p>Das 
+               <a class="blackdiv" target="_blank" href="https://www.meetup.com/de-DE/OKLab-Koln-Meetup">CodeforCologne Meetup</a> ist ein zwei wöchentliches Treffen um Anwendungen, freie Daten und Visualisierungen zu erstellen und Wissen auszutauschen.
+            </p>
+            <a class="blackdiv" target="_blank" href="https://codefor.de/koeln/">
+            <img src="images/oklab_koelle.png" alt="CodeforCologne">
+            </a>
+            <h2>Hilfe</h2>
+            Die Sentinel-5P NO
+            <sub>2</sub> Daten des Vortages werden täglich um 19 Uhr mittels des 
+            <a class="blackdiv" target="_blank" href="https://sentinel5dl.emissions-api.org/">Sentinel-5P Downloaders</a> der 
+            <a class="blackdiv" target="_blank" href="https://emissions-api.org/">Emissions-API</a> aufbereitet.
+            Es wird dabei der Datensatz "nitrogendioxide_tropospheric_column" verwendet, also der modellierte NO
+            <sub>2</sub> Gehalt der Troposphäre. 
+            Werte mit einer Qualität (qa_value) &#60; 0,75 werden entsprechend der Empfehlungen der ESA ausgefiltert. Ansonsten hätte die Bewölkung einen zu großen Einfluss (
+            <a class="blackdiv" target="_blank" href="http://www.tropomi.eu/sites/default/files/files/publicS5P-KNMI-L2-0005-RP-ATBD_NO2_data_products-20190206_v140.pdf">Algorithm Theoretical Basis Document</a>).
+            Mehr dazu bei den Hintergrundinformationen.
+            <br/>
+            Das Gebiet umfasst die deutschsprachigen Länder, sowie den Norden Italiens (Länge: 5°-18°, Breite: 44°-56°).
+            Die italienische Po-Ebene mit ihren Ballungs- und Industriezentren ist zumeist stark belastet.
+            Durch die geographische Lage (Talkessel) ist diese Region schlecht belüftet, und so kann sich der Smog auch oft recht lange halten. 
+            <p>Das Untersuchungsgebiet wird jeden Tag zumindest zweimal aufgenommen.
+               Die Umlaufbahnen (Orbits) des ausgewählten Tages können auch einzeln angewählt werden:  
+            </p>
+            <img src="images/switch_orbits.png" alt="Orbits umschalten.">
+            <p> Die Uhrzeit ist in der mittleren Greenwich-Zeit (GMT) angegeben und weicht um minus 1 Stunde von unserer mitteleuropäischen Zeit ab, bzw. minus 2 Stunden von der Mitteleuropäischen Sommerzeit.
+            <p>
+            <p>Auswahl des Datums:</p>
+            <img src="images/ausw_datum.png" alt="Auswahl des Datums">
+            <p>Es werden die Daten der zwei letzten Orbit Zyklen vorgehalten (32 Tage).</p>
+            <p>Durch anklicken eines Messpunktes werden die modellierten NO
+               <sub>2</sub> Werte dargestellt, sowie Informationen zur Lage und der Qualität des Wertes .
+            </p>
+            <img src="images/fi_s5p.png" alt="FeatureInfo">
+            <p>Des weiteren kann dort der Geodatensatz des entsprechenden Tages im GeoJson Format herunter geladen werden.</p>
+            <p>Durch ein Anklicken des Augensymbols in der linken oberen Ecke der Bedienwerkzeuge lassen sich diese weg schalten, um auch bei mobilen Endgeräten genug Platz für die Kartendarstellung zu haben:</p>
+            <img src="images/eye_close.png" alt="Auswahl dB">
+            <h2>Hintergrundinformationen</h2>
+            <p>Der europäische Umweltsatellit Sentinel 5-Precursor (Precursor = Vorgänger) ist im Oktober 2017 gestartet. Der Schwerpunkt liegt auf der Beobachtung der Luftverschmutzung. Die eigentliche 
+               <a class="blackdiv" target="_blank" href="https://sentinel.esa.int/web/sentinel/missions/sentinel-5">Sentinel-5 Mission</a> soll 2021 starten. Der Sentinel 5-P schließt Teile der Datenlücke zwischen dem 2012 ausgefallenen 
+               <a class="blackdiv" target="_blank" href="https://earth.esa.int/web/guest/missions/esa-operational-eo-missions/envisat">Envisat</a> Satelliten und der zukünftigen Sentinel-5-Mission.
+            </p>
+            <p>An Bord des Satelliten befindet sich als einziges Messinstrument TROPOMI (TROPOspheric Monitoring Instrument), ein Spektrometer der in verschiedenen Messbereichen die  Reflexion (zurückgeworfenes Licht) und Emission (von der Oberfläche selbst ausgesandte Strahlung) der Erdoberfläche misst.</p>
+            <p>Die folgende Tabelle gibt einen Überblick über die wichtigsten Eckdaten: </p>
+            <table>
+               <tr>
+                  <td>Start</td>
+                  <td>13. Oktober 2017</td>
+               </tr>
+               <tr>
+                  <td>Bahnhöhe</td>
+                  <td>824 km</td>
+               </tr>
+               <tr>
+                  <td>Umlaufzeit</td>
+                  <td>101 min (polare Bahn)</td>
+               </tr>
+               <tr>
+                  <td>Orbit Cycle</td>
+                  <td>16 days (14 orbits per day, 227 orbits per cycle)</td>
+               </tr>
+               <tr>
+                  <td>Instrument</td>
+                  <td>TROPOspheric Monitoring Instrument </td>
+               </tr>
+               <tr>
+                  <td>Messung</td>
+                  <td>jede Sekunde eine Fläche von 2670 km × 7 km (ab 8/2019 5,6 km) *</td>
+               </tr>
+               <tr>
+                  <td>Räumliche Auflösung</td>
+                  <td>7 * 3,5 km, bzw. ab 8/2019 5,6 * 3,5 km</td>
+               </tr>
+               <tr>
+                  <td>Update "Near Real Time" Produkte</td>
+                  <td>maximal drei Stunden nach der Messung</td>
+               </tr>
+               <tr>
+                  <td>Update "Offline" Produkte</td>
+                  <td>innerhalb von 5 Tagen</td>
+               </tr>
+               <tr>
+                  <td>Update "Reprocessed" Produkte</td>
+                  <td>nach Bedarf</td>
+               </tr>
+            </table>
+            <p>*  Ultraviolettes Licht 5,6 * 28 km, kurzwelliges Infrarot 5,6 * 7 km </p>
+            <p>Die folgende Abbildung stellt die Aufnahmegeometrie und Abdeckung dar:</p>
+            <img src="images/coverage.png" alt="Abdeckung und Aufnahmegeometrie">
+            <p>
+               <strong>Abbildung 1:</strong> Aufnahmegeometrie und Abdeckung der Sentinel-5P Mission, 
+               <a class="blackdiv" target="_blank" href="https://sentinel.esa.int/documents/247904/322305/MISSION+geometry+coverage/3233d418-015c-4442-bfe6-c99fc34ab1dd?t=1461749435636">Quelle & Copyright ESA</a>
+            </p>
+            <p>Die oben angegebene räumliche Auflösung gilt nur im Nadir, der kürzesten Distanz zwischen dem Satelliten und der Erdoberfläche.
+               Zu den Rändern hin des 2670 km breiten Aufnahmestreifen (Swath-width) nimmt die räumliche Auflösung durch die schräge Aufnahmegeometrie entsprechend ab, auf ca. 9 km. 
+            </p>
+            <p>Aus der Abbildung ist ebenfalls die fast polare Umlaufbahn des Satelliten zu erkennen. Mit dem passiven Spektrometer sind in der Nacht keine Aufnahmen möglich.</p>
+            <p>Ebenfalls kann der Abbildung die zeitliche Abdeckung der Erde entnommen werden.
+               Da die Aufnahmen im Bereich des Äquators nicht die gesamte Fläche abdecken, dauert es hier bis zu zwei Tagen. 
+               Europa wird täglich mindestens einmal erfasst, durch die überlappenden Orbits einige Regionen auch mehrmals.
+            </p>
+            <p>Es werden die folgenden Frequenzbereiche von dem Spektrometer gemessen (Wellenlänge in nm):</p>
+            <table>
+               <tr>
+                  <td>L1B_RA_BD1</td>
+                  <td>270 – 300 (UV) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD2</td>
+                  <td>300 – 320 (UV) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD3</td>
+                  <td>320 – 405 (UVIS) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD4</td>
+                  <td>405 – 500 (UVIS) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD5</td>
+                  <td>675 – 725 (NIR) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD6</td>
+                  <td>725 – 775 (NIR) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD7</td>
+                  <td>2305-2345 (SWIR) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>L1B_RA_BD8</td>
+                  <td>2345-2385 (SWIR) Strahlungsdichte</td>
+               </tr>
+               <tr>
+                  <td>IR_UVN</td>
+                  <td>270-775 (UVN) Bestrahlungsstärke</td>
+               </tr>
+               <tr>
+                  <td>IR_SIR</td>
+                  <td>2305-2385 (SWIT) Bestrahlungsstärke</td>
+               </tr>
+            </table>
+            <p>Diese Messungen sind die Level 1B Produkte.</p>
+            <p>Die Bestrahlungsstärke  gibt an, wie viel Watt an Lichtleistung auf eine beleuchteter Fläche auftreffen (in Watt je Quadratmeter).
+               <br/>
+               Die Strahlungsdichte gibt an, wie viel Watt an Lichtleistung von einer leuchtenden Fläche im Raumwinkel ausgehen (in Watt je Quadratmeter und Steradiant).
+               <br/>
+               <a class="blackdiv" target="_blank" href="https://www.grund-wissen.de/physik/optik/photometrie.html">siehe Photometrische Grundbegriffe</a>
+            </p>
+            <p>Mittels dieser Messwerte werden die folgenden Level 2 Produkte modelliert:</p>
+            <table>
+               <tr>
+                  <td>L2__O3____</td>
+                  <td>Ozone (O
+                     <sub>3</sub>) total column
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__O3_TCL</td>
+                  <td>Ozone (O
+                     <sub>3</sub>) tropospheric column
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__O3__PR</td>
+                  <td>Ozone (O
+                     <sub>3</sub>) profile
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__O3_TPR</td>
+                  <td>Ozone (O
+                     <sub>3</sub>) tropospheric profile
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__NO2___</td>
+                  <td>Nitrogen Dioxide (NO
+                     <sub>2</sub>), total and tropospheric columns
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__SO2___</td>
+                  <td>Sulfur Dioxide (SO
+                     <sub>2</sub>) total column
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__CO____</td>
+                  <td>Carbon Monoxide (CO) total column</td>
+               </tr>
+               <tr>
+                  <td>L2__CH4___</td>
+                  <td>Methane (CH
+                     <sub>4</sub>) total column
+                  </td>
+               </tr>
+               <tr>
+                  <td>L2__HCHO__</td>
+                  <td>Formaldehyde (HCHO) total column</td>
+               </tr>
+               <tr>
+                  <td>L2__CLOUD_</td>
+                  <td>Cloud fraction, albedo, top pressure</td>
+               </tr>
+               <tr>
+                  <td>L2__AER_AI</td>
+                  <td>UV Aerosol Index</td>
+               </tr>
+               <tr>
+                  <td>L2__AER_LH</td>
+                  <td>Aerosol Layer Height (mid-level pressure)</td>
+               </tr>
+               <tr>
+                  <td>UV product</td>
+                  <td>Surface Irradiance/erythemal dose</td>
+               </tr>
+               <tr>
+                  <td>L2__NP_BDx, x=3, 6, 7</td>
+                  <td>Suomi-NPP VIIRS Clouds (Modis kompatibel)</td>
+               </tr>
+            </table>
+            <p>Details zu den Produkten und Algorithmen gibt es auf der Seite der 
+               <a class="blackdiv" href="https://sentinel.esa.int/web/sentinel/technical-guides/sentinel-5p/products-algorithms">ESA</a>.
+            </p>
+            <p>Jeder Stoff besitzt ein charakteristisches Spektrum, dargestellt für NO
+               <sub>2</sub> in der Abbildung unten.
+            </p>
+            <img src="images/no2_spektrum.png" alt="NO2 Spektrum">
+            <p>
+               <strong>Abbildung 2:</strong> NO
+               <sub>2</sub> Spektrum. Quelle und Copyright: Hawe, Eamonn & Fitzpatrick, Carol & Chambers, Paul & Lewis, Elfed. (2007). An investigation into the use of an integrating sphere as a gas absorption cell. Journal of Optics A: Pure and Applied Optics. 9. 10.1088/1464-4258/9/6/S03.
+            </p>
+            <p>Aus den Level 1B Produkten und zusätzlichen Informationen wird dann der NO
+               <sub>2</sub> Gehalt der Atmosphäre abgeleitet 
+               <a class="blackdiv" target="_blank" href="https://sentinel.esa.int/documents/247904/2474726/Sentinel-5P-Level-2-Product-User-Manual-Nitrogen-Dioxide">in drei Schritten</a>:
+            </p>
+            <ol>
+               <li>Ableitung der NO
+                  <sub>2</sub> Dichte (slant column density) durch eine 
+                  <a class="blackdiv" target="_blank" href="https://de.wikipedia.org/wiki/Differenzielle_optische_Absorptionsspektroskopie">differentielle optische Absorptionsspektroskopie</a> aus den Level 1B Produkten.
+               </li>
+               <li>Trennung in einen troposphärischen und stratosphärischen Anteil auf Basis einer 
+                  <a class="blackdiv" target="_blank" href="https://www.dwd.de/DE/forschung/wettervorhersage/num_modellierung/02_datenassimilation/datenassimilation_node.html">meteorologischen Datenassimilation</a>.
+               </li>
+               <li>Ableitung des No
+                  <sub>2</sub> Gehaltes der Troposphäre mittels eines Luftmassenfaktors und eines chemischen Transportmodells (TM5-MP model), 
+                  <a class="blackdiv" target="_blank" href="http://www.tropomi.eu/sites/default/files/files/publicS5P-KNMI-L2-0005-RP-ATBD_NO2_data_products-20190206_v140.pdf">Details im ATBD Doklument</a>.
+               </li>
+            </ol>
+            <p> Zu beachten ist, dass die räumliche Auflösung des Satelliten im Nadir Bereich zumeist höher ist, als die in den verwendeten Modellen und Tabellen.</p>
+            <h4>Praktische Verwendung der Level 2 Produkte</h4>
+            <p>
+               <strong>Wichtig!</strong> Die Level 2 Produkte des Sentinel-5P sollten nicht mit den Daten des 
+               <a class="blackdiv" target="_blank" href="http://www.regional.atmosphere.copernicus.eu/">Copernicus Atmosphere Monitoring Service (CAMS)</a> verwechselt werden.
+               Dort stehen für Europa stündliche Modelldaten für acht Höhenstufen zur Verfügung. Zur Zeit (4/2020) werden Daten von acht unterschiedliche Modellen angeboten mit einer räumlichen Auflösung von 0,1° * 0,1°.
+               <br/>
+               Bis jetzt fließen die Level 2 Daten noch nicht wieder in die produktiven CAMS Modelle mit ein, die NO
+               <sub>2</sub> Daten sind aber seit Juli 2018 Bestandteil des "monitoring mode" im operationalen CAMS System (
+               <a class="blackdiv" target="_blank" href="https://www.ecmwf.int/en/newsletter/159/meteorology/use-sentinel-5p-air-quality-data-cams">The use of Sentinel-5P air quality data by CAMS</a>).
+            </p>
+            <p>Neben den Höhenstufen sind auch die Einheiten zwischen den CAMS Modellen und den Sentinel NO
+               <sub>2</sub> Daten nicht vergleichbar, und können auch nicht so einfach 
+               <a class="blackdiv" target="_blank" href="https://earthscience.stackexchange.com/questions/8860/convert-omi-no2-vertical-column-density-molecules-cm2-into-mixing-ratio-ppm">umgerechnet</a> werden.
+            </p>
+            <ul>
+               <li>CAMS NO2 Werte in µg/m
+                  <sup>3</sup>
+               </li>
+               <li>Sentinel-5P NO2 Werte in Moleküle/cm
+                  <sup>2</sup>
+               </li>
+            </ul>
+            <h4>Verfügbare Datensätze</h4>
+            <ul>
+            <li>Near Real Time (NRTI):Verfügbar maximal drei Stunden nach der Messung. Diese Daten können inkomplett sein und haben evtl. nicht die Qualität der anderen Datensätze. Die daten werden einen Monat vorgehalten.</li>
+            <li>Offline (OFFL): Verfügbar innnerhalb von 5 Tagen nach der Messung.</li>
+            <li>Reporcessed (RPRO): Verfügbar nach Beadarf. Es ist darauf zu achten, immer die neuste Version zu verwenden. Der Datensatz mit der höchsten Qualität.</li>
+            </table>
+            <h4>Das Aufnahmegebiet</h4>
+            <p>Das Aufnahmegebiet wird täglich zumindest von 2 Orbits erfasst:</p>
+            <table>
+               <tr>
+                  <th>Datum</th>
+                  <th>Orbit1</th>
+                  <th>Orbit2</th>
+                  <th>Orbit3</th>
+               </tr>
+               <tr>
+                  <td> 1.4.2020</td>
+                  <td>10:25-10:27</td>
+                  <td>12:04-12:08</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td> 2.4.2020</td>
+                  <td>10:09-10:10</td>
+                  <td>11:45-11:48</td>
+                  <td>13:28-13:29</td>
+               </tr>
+               <tr>
+                  <td> 3.4.2020</td>
+                  <td>9:50-9:51</td>
+                  <td>11:27-11:30</td>
+                  <td>13:07-13:11</td>
+               </tr>
+               <tr>
+                  <td> 4.4.2020</td>
+                  <td>11:08-11:12</td>
+                  <td>12:48-12:52</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td> 5.4.2020</td>
+                  <td>10:49-10:53</td>
+                  <td>12:29-12:33</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td> 6.4.2020</td>
+                  <td>10:31-10:34</td>
+                  <td>12:11-12:14</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td> 7.4.2020</td>
+                  <td>10:14-10:16</td>
+                  <td>11:51-11:55</td>
+                  <td>13:33-13:36</td>
+               </tr>
+               <tr>
+                  <td> 8.4.2020</td>
+                  <td>9:56-9:57</td>
+                  <td>11:33-11:37</td>
+                  <td>13:14-13:17</td>
+               </tr>
+               <tr>
+                  <td> 9.4.2020</td>
+                  <td>11:14-11:18</td>
+                  <td>12:55–12:58</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>10.4.2020</td>
+                  <td>10:55–10:59</td>
+                  <td>12:36-12:40</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>11.4.2020</td>
+                  <td>10:37–10:40</td>
+                  <td>12:17-12:20</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>12.4.2020</td>
+                  <td>10:19–10:23</td>
+                  <td>11:58–12:02</td>
+                  <td>13:39–13:43</td>
+               </tr>
+               <tr>
+                  <td>13.4.2020</td>
+                  <td>10:02-10:03</td>
+                  <td>11:39-11:43</td>
+                  <td>13:20-13:24</td>
+               </tr>
+               <tr>
+                  <td>14.4.2020</td>
+                  <td>11:21-11:24</td>
+                  <td>13:01-13:05</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>15.4.2020</td>
+                  <td>11:02-11:06</td>
+                  <td>12:42-12:46</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>16.4.2020</td>
+                  <td>10:43-10:47</td>
+                  <td>12:23-12:27</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>17.4.2020</td>
+                  <td>10:25-10:28</td>
+                  <td>12:04-12:08</td>
+                  <td>-</td>
+               </tr>
+               <tr>
+                  <td>18.4.2020*</td>
+                  <td>10:08-10:09</td>
+                  <td>11:45-11:49</td>
+                  <td>13:26-13:30</td>
+               </tr>
+               <tr>
+                  <td>19.4.2020*</td>
+                  <td>9:50-9:51</td>
+                  <td>11:26-11:30</td>
+                  <td>13:08-13:11</td>
+               </tr>
+               <tr>
+                  <td>20.4.2020</td>
+                  <td>11:08-11:12</td>
+                  <td>12:49-12:52</td>
+                  <td></td>
+               </tr>
+            </table>
+            <p>*  Das Aufnahmegebiet wurde im äußersten Norden teilweise noch von einem Orbit erfasst, der die Nordpolarregion in den sehr frühen Morgenstunden (um ca. 3:15 GMT) abbildet. Sinnvolle Daten kamen um diese Uhrzeit allerdings nicht für das Aufnahmegebbiet heraus, und wurden entsprechend ausgefiltert.</p>
+            <p>
+               <strong>Tabelle:</strong> Aufnahmezeitpunkte des Testgebietes im April 2020. Uhrzeit: Greenwich Mean Time (GMT).
+            </p>
+            <p>Der Orbital Cycle beträgt 16 Tage, danach geht der Zyklus von Neuem los. Dies heißt aber nicht, dass die Messpunkte auch zu 100% wieder übereinander liegen. 
+               Das kann auch schon einmal ein paar Kilometer daneben liegen.
+            </p>
+            <p>Leider wird durch die Messungen der typische Rush-Hour Peak (5:00-8:00 Uhr MEZ/MESZ) der NO
+               <sub>2</sub> Werte in Bodennähe nicht erfasst.
+            </p>
+            <p>
+               <a class="blackdiv" href="http://mps.tropomi.eu/dashboard">Hier geht es zum TROPOMI Portal</a>
+            </p>
+            <h2>Daten Download</h2>
+            <p>
+               <a class="blackdiv" target="_blank" href="https://opendem.info/ol6/s5p/download/">Download der Sentinel Daten im GeoJson Format.</a>
+            </p>
+            <p>Die Datei s5p_no.json enthält die Metadaten (Orbit, Aufnahmestart, Aufnahmeende) zu den Datensätzen.</p>
+            OGC WebMappingService mit Time Parameter:
+            <br/>
+            <ul>
+               <li>URL: 
+                  <a class="blackdiv" target="_blank" href="https://www.opendem.info/geoserver/openair/wms?">https://www.opendem.info/geoserver/openair/wms?</a>
+               </li>
+               <li>layers:</li>
+               <ul>
+                  <li>4 Klassen: openair:no_s5p_overview</li>
+                  <li>12 Klassen: openair:no_s5p  </li>
+               </ul>
+               <li>time: verkürzt auf einen Tag z.B. "time=2020-04-24", oder mit Zeit Intervall "time=2020-04-24T09:54:00.000Z/2020-04-24T09:59:00.000Z"</li>
+            </ul>
+            <p>Die Nutzungsbedingungen zu den hier angebotenen Daten und Diensten können auf der 
+               <a target="_blank" class="blackdiv" href="https://sentinel.esa.int/documents/247904/690755/Sentinel_Data_Legal_Notice"> Sentinel Data Legal Notice Seite </a> eingesehen werden.
+            </p>
+            <p>
+               <a class="blackdiv" target="_blank" href="https://github.com/codeforcologne/Sentinel5P-NO2-Map">
+               <img src="images/GitHub-Mark-64px.png" alt="GitHub" style="width:64px;height:64px;border:0;">Code on GitHub
+               </a>
+            </p>
+            <div id="helpFooter" class="modal_footer">Sentinal-5P NO
+               <sub>2</sub> Map
+            </div>
+         </div>
+      </div>
+      <div id="legal" class="modal3">
+         <div id="legalHeader" class="modal_header">
+            <div id="legalText" class="modal_headerText">Rechtliche Hinweise</div>
+            <img id="closeLegal" class="closeInfo" src="images/close.svg" alt="close" width="30" height="30">
+         </div>
+         <div id="selectLegal" class="modal_content">
+            <h2 id="legal_headline">Rechtliche Hinweise</h2>
+            <h3 id="impress">Impressum</h3>
+            <p id="impress_text">Verantwortlich für diesen Webauftritt ist:
+               <br/> Martin Over,
+               <br/> c/o OK Lab Köln,
+               <br/> Hackländerstraße 2,
+               <br/> 50825 Köln,
+               <br/> contact(at)OpenDEMdata.info
+            </p>
+            <h3 id="disclaimer">Haftungsausschluss</h3>
+            <h4 id="legal_disclaimer_content">Haftung für Inhalte</h4>
+            <p id="legal_disclaimer_content_text">Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen. Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach § 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist jedoch erst ab dem Zeitpunkt der Kenntnis einer konkreten Rechtsverletzung möglich. Bei Bekanntwerden von entsprechenden Rechtsverletzungen werden wir diese Inhalte umgehend entfernen.</p>
+            <h4 id="legal_disclaimer_content_links">Haftung für Links</h4>
+            <p id="legal_disclaimer_content_links_text">Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich. Die verlinkten Seiten wurden zum Zeitpunkt der Verlinkung auf mögliche Rechtsverstöße überprüft. Rechtswidrige Inhalte waren zum Zeitpunkt der Verlinkung nicht erkennbar. Eine permanente inhaltliche Kontrolle der verlinkten Seiten ist jedoch ohne konkrete Anhaltspunkte</p>
+            <h4 id="legal_author">Urheberrecht</h4>
+            <p id="legal_author_text">Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Sie sind mit einer Creative Commons Lizenz urheberrechtlich geschützt. Sofern nicht anders angegeben, stehen die Inhalte dieser Seite unter der Creative Commons Namensnennung 3.0 DE Lizenz. Soweit die Inhalte auf dieser Seite nicht vom Betreiber erstellt wurden, werden die Urheberrechte Dritter beachtet. Insbesondere werden Inhalte Dritter als solche gekennzeichnet. Sollten Sie trotzdem auf eine Urheberrechtsverletzung aufmerksam werden, bitten wir um einen entsprechenden Hinweis. Bei Bekanntwerden von Rechtsverletzungen werden wir derartige Inhalte umgehend entfernen.</p>
+            <h3 id="data_privacy_statement">Datenschutzerklärung</h3>
+            <h4 id="data_privacy_statement_text1">Bereitstellung der Website und Erstellung von Protokoll- oder Log-Dateien</h4>
+            <h4 id="data_privacy_statement_text2">Welche Daten werden verarbeitet?</h4>
+            <p id="data_privacy_statement_text3">Bei jedem Zugriff auf Inhalte des Internetangebotes werden dort vorübergehend Daten über sogenannte Protokoll- oder Log-Dateien gespeichert, die möglicherweise eine Identifizierung zulassen. Die folgenden Daten werden hierbei erhoben:</p>
+            <ul>
+               <li id="data_privacy_statement_li1">Datum und Uhrzeit des Abrufs</li>
+               <li id="data_privacy_statement_li3">Name des aufgerufenen Internetdienstes, der aufgerufenen Ressource und der verwendeten Aktion</li>
+               <li id="data_privacy_statement_li4">Abfrage, die der Client gestellt hat</li>
+               <li id="data_privacy_statement_li5">übertragene Datenmenge</li>
+               <li id="data_privacy_statement_li6">IP-Adresse des aufrufenden Rechners</li>
+               <li id="data_privacy_statement_li7">Clientinformationen (u.a. Browser, Betriebssystem)</li>
+            </ul>
+            <h4 id="data_privacy_statement_text4">Auf welcher Rechtsgrundlage werden diese Daten verarbeitet?</h4>
+            <p id="data_privacy_statement_text5">Rechtsgrundlage für die vorübergehende Speicherung der Daten ist Art. 6 Abs. 1 lit. e DS-GVO i.V.m. § 3 Abs. 1 NRWDSAnpUG-EU.</p>
+            <h4 id="data_privacy_statement_text6">Zu welchen Zwecken erfolgt die Verarbeitung?</h4>
+            <p id="data_privacy_statement_text7">Die Daten aus den Protokoll- bzw. Logdateien dienen zur Sicherstellung der Funktionsfähigkeit der Website. Zudem dienen sie zur Abwehr und Analyse von Angriffen. In diesen Zwecken liegt auch unser berechtigtes Interesse an der Datenverarbeitung.</p>
+            <h4 id="data_privacy_statement_text8">Wie lange werden die Daten gespeichert?</h4>
+            <p id="data_privacy_statement_text9">Die Daten werden bis zu einer Woche direkt und ausschließlich für Administratoren zugänglich aufbewahrt. Mit dem Hoster des Serverswurde ein entsprechender Vertrag zur Auftragsverarbeitung (AVV) geschlossen. Es handelt sich um einen deutschen Serverstandort</p>
+            <h4 id="data_privacy_statement_text10">Karten</h4>
+            <p id="data_privacy_statement_text11">Die hier gezeigten Hintergrundkarten kommen von:</p>
+            <a class="blackdiv" href="https://www.openstreetmap.org">www.openstreetmap.org</a>
+            <h4 id="data_privacy_statement_text12">Icons</h4>
+            <p id="data_privacy_statement_text14">Das Augen Icon für die Werkzeuge wurde erstellt von:</p>
+            <a class="blackdiv" href="https://www.svgrepo.com/svg/7885/show">SVG Repo - Creative Commons BY 4.0</a>
+            <br/>
+            <p id="data_privacy_statement_text15">Das Weltkugel Loading Icon wurde erstellt von:</p>
+            <a class="blackdiv" href="https://loading.io">(c) loading.io</a>
+            <br/>
+            <h4 id="data_privacy_statement_text16">Daten</h4>
+            <p>Die Nutzungsbedingungen zu den hier angebotenen Daten können auf der 
+               <a class="blackdiv" href="https://sentinel.esa.int/documents/247904/690755/Sentinel_Data_Legal_Notice"> Sentinel Data Legal Notice Seite </a> eingesehen werden.
+            </p>
+         </div>
+         <div id="legalFooter" class="modal_footer">Sentinel-5P NO
+            <sub>2</sub> Map
+         </div>
+      </div>
+      <img class="loader" id="loader" src="images/loader.gif" title="Loader (c) loading.io" alt="Loader (c) loading.io">
+      <script src="index.js"></script>
+   </body>
+</html>
