@@ -495,7 +495,7 @@ var map = new Map({
     ]),
     layers: [
         new TileLayer({
-            source: new OSM(),
+            source: new OSM({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'}),
         }),
         wmsLayer, wmsLayerOverview
     ],
